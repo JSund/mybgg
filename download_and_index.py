@@ -8,41 +8,45 @@ from boardgamegeek import BGGClient
 from boardgamegeek.cache import CacheBackendSqlite
 
 class BoardGame:
-    def __init__(self, game_data, expansions=[]):
+    def __init__(self, game_data, tags=[], expansions=[]):
         self.id = game_data.id
         self.name = game_data.name
         self.description = game_data.description
         self.image = game_data.thumbnail
         self.categories = game_data.categories
         self.mechanics = game_data.mechanics
-        self.players = self.calc_num_players(game_data)
+        self.players = self.calc_num_players(game_data, expansions)
         self.weight = self.calc_weight(game_data)
         self.playing_time = self.calc_playing_time(game_data)
+        self.tags = tags
         self.expansions = expansions
 
     def _num_players_is_recommended(self, num, votes):
         return int(votes['best_rating']) + int(votes['recommended_rating']) > int(votes['not_recommended_rating'])
 
-    def _facet_for_num_player(self, num, num_with_maybe_plus, votes):
-        is_best = int(votes['best_rating']) > 10 and int(votes['best_rating']) > int(votes['recommended_rating'])
-        best_or_recommended = "Best" if is_best else "Recommended"
+    def _num_players_is_best(self, num, votes):
+        return int(votes['best_rating']) > 10 and int(votes['best_rating']) > int(votes['recommended_rating'])
 
-        return {
-            "level1": num,
-            "level2": f"{num} > " + best_or_recommended +  f" with {num_with_maybe_plus}",
-        }
-
-    def calc_num_players(self, game_data):
+    def calc_num_players(self, game_data, expansions):
         num_players = []
         for num, votes in game_data.suggested_players['results'].items():
             if not self._num_players_is_recommended(num, votes):
                 continue
 
             if "+" not in num:
-                num_players.append(self._facet_for_num_player(num, num, votes))
+                is_best = self._num_players_is_best(num, votes)
+                num_players.append((num, "best" if is_best else "recommended"))
             else:
                 for i in range(int(num.replace("+", "")) + 1, 11):
-                    num_players.append(self._facet_for_num_player(i, num, votes))
+                    is_best = self._num_players_is_best(num, votes)
+                    num_players.append((num, "best" if is_best else "recommended"))
+
+        for expansion in expansions:
+            for expansion_num, _ in expansion.players:
+                if expansion_num not in [num for num, _ in num_players]:
+                    num_players.append((expansion_num, "expansion"))
+
+        num_players = sorted(num_players)
 
         return num_players
 
@@ -84,13 +88,22 @@ class Downloader():
             self.client = BGGClient()
 
     def collection(self, user_name, extra_params):
-        collection = self.client.collection(
-            user_name=user_name,
-            **extra_params,
-        )
+        collection = []
+
+        if isinstance(extra_params, list):
+            for params in extra_params:
+                collection += self.client.collection(
+                    user_name=user_name,
+                    **params,
+                )
+        else:
+            collection = list(self.client.collection(
+                user_name=user_name,
+                **extra_params,
+            ))
 
         games_data = self.client.game_list(
-            [game_in_collection.id for game_in_collection in collection.items]
+            [game_in_collection.id for game_in_collection in collection]
         )
 
         games = list(filter(lambda x: not x.expansion, games_data))
@@ -100,12 +113,24 @@ class Downloader():
         for expansion_data in expansions:
             for expands_game in expansion_data.expands:
                 if expands_game.id in game_id_to_expansion:
-                    expansion = BoardGame(expansion_data)
-                    del(expansion.description)  # Don't index the description of expansions
-                    game_id_to_expansion[expands_game.id].append(expansion)
+                    game_id_to_expansion[expands_game.id].append(expansion_data)
+
+        game_id_to_tags = {game.id: [] for game in games}
+        for stats_data in collection:
+            if stats_data.id in game_id_to_tags:
+                for tag in ['preordered', 'prevowned', 'want', 'wanttobuy', 'wanttoplay', 'fortrade', 'wishlist']:
+                    if int(getattr(stats_data, tag)):
+                        game_id_to_tags[stats_data.id].append(tag)
 
         return [
-            BoardGame(game_data, expansions=game_id_to_expansion[game_data.id])
+            BoardGame(
+                game_data,
+                tags=game_id_to_tags[game_data.id],
+                expansions=[
+                    BoardGame(expansion_data)
+                    for expansion_data in game_id_to_expansion[game_data.id]
+                ]
+            )
             for game_data in games
         ]
 
@@ -152,10 +177,39 @@ class Indexer:
 
         return obj
 
+    def _facet_for_num_player(self, num, type_):
+        num_no_plus = num.replace("+", "")
+        facet_types = {
+            "best": {
+                "level1": num_no_plus,
+                "level2": f"{num_no_plus} > Best with {num}",
+            },
+            "recommended": {
+                "level1": num_no_plus,
+                "level2": f"{num_no_plus} > Recommended with {num}",
+            },
+            "expansion": {
+                "level1": num_no_plus,
+                "level2": f"{num_no_plus} > Expansion allows {num}",
+            },
+        }
+
+        return facet_types[type_]
+
     def add_objects(self, collection):
         games = [Indexer.todict(game) for game in collection]
         for game in games:
             game["objectID"] = f"bgg{game['id']}"
+
+            # Turn players tuple into a hierarchical facet
+            game["players"] = [
+                self._facet_for_num_player(num, type_)
+                for num, type_ in game["players"]
+            ]
+
+            # Don't index descriptions of expansions, they make objects too big
+            for expansion in game["expansions"]:
+                del(expansion["description"])
 
         self.index.add_objects(games)
 

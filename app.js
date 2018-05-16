@@ -122,19 +122,28 @@ function init(SETTINGS) {
       collapsible: true,
       transformData: {
         item: function(game){
-          num_players_list = [];
+          players = [];
           for (let num_players of game.players) {
-            num_players = num_players.level2.replace(/^\d+ > [\w ]+ (\d+\+?)$/, '$1')
-            num_players_list.push(num_players);
+            match = num_players.level2.match(/^\d+ > ([\w ]+) (?:with|allows) (\d+\+?)$/)
+            type = match[1].toLowerCase()
+            num = match[2]
 
-            if (num_players.indexOf("+") > -1) {
+            type_to_string = {
+              "best": " (best)",
+              "recommended": "",
+              "expansion": " (with exp)"
+            }
+            players.push(num + type_to_string[type]);
+
+            if (num.indexOf("+") > -1) {
               break;
             }
           }
-          game.players = num_players_list.join(", ");
+          game.players = players.join(", ");
 
           game.categories = game.categories.join(", ");
           game.mechanics = game.mechanics.join(", ");
+          game.tags = game.tags.join(", ");
           game.description = game.description.trim();
           return game;
         },
@@ -163,11 +172,14 @@ function init(SETTINGS) {
   search.start();
 
   function set_bgg_name() {
-    name = SETTINGS.boardgamegeek.user_name + "'s";
-    title = document.getElementsByTagName("title")[0];
-    title.innerHTML = title.innerHTML.replace("my", name);
-    h1 = document.getElementsByTagName("h1")[0];
-    h1.innerHTML = h1.innerHTML.replace("my", name);
+    title = SETTINGS.project.title;
+    if (!title) {
+      title = "All " + SETTINGS.boardgamegeek.user_name + "'s boardgames";
+    }
+
+    title_tag = document.getElementsByTagName("title")[0];
+    h1_tag = document.getElementsByTagName("h1")[0];
+    title_tag.innerHTML = h1_tag.innerHTML = title;
   }
   set_bgg_name();
 }
