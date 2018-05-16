@@ -49,7 +49,7 @@
         </div>
       </summary>
       <table>
-        <tr><th>Players</th><td>{{ players }}</td></tr>
+        <tr><th>Players</th><td>{{{ players }}}</td></tr>
         <tr><th>Playing time</th><td>{{ playing_time }}</td></tr>
         <tr><th>Complexity</th><td>{{ weight }}</td></tr>
         <tr><th>Categories</th><td>{{ categories }}</td></tr>
@@ -58,6 +58,7 @@
             <th>BGG Link</th>
             <td><a href="https://boardgamegeek.com/boardgame/{{{ id }}}">{{ name }}</a></td>
         </tr>
+        {{# has_expansions }}
         <tr>
           <th>Expansions</th>
           <td><ul>
@@ -66,6 +67,7 @@
             {{/ expansions }}
           </ul></td>
         </tr>
+        {{/ has_expansions }}
       </table>
       <p>{{{ _highlightResult.description.value }}}</p>
     </details>

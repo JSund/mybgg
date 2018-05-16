@@ -129,9 +129,9 @@ function init(SETTINGS) {
             num = match[2]
 
             type_to_string = {
-              "best": " (best)",
-              "recommended": "",
-              "expansion": " (with exp)"
+              'best': ' <span class="soft">(best)</span>',
+              'recommended': '',
+              'expansion': ' <span class="soft">(with exp)</span>'
             }
             players.push(num + type_to_string[type]);
 
@@ -145,6 +145,8 @@ function init(SETTINGS) {
           game.mechanics = game.mechanics.join(", ");
           game.tags = game.tags.join(", ");
           game.description = game.description.trim();
+
+          game.has_expansions = (game.expansions.length > 0)
           return game;
         },
       },
