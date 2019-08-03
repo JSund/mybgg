@@ -46,9 +46,13 @@ Using this project, you can set up your own site for searching and filtering you
                                         // page which says: APPS > YOUR_ID_HERE
               "api_key_search_only": "YOUR_PUBLIC_API_KEY",  // Click "API Keys" in the menu to the left.
                                                              // Use the "Search-Only API Key"!
-              "index_name": "YOUR_INDEX_NAME"  // All your games will be stored in something called an "index".
-                                               // You can create and index by going to "Indices" in the menu to the left.
-                                               // Click to create a new index, and give it a name. Put the name you choose here.
+              "index_name": "YOUR_INDEX_NAME",  // All your games will be stored in something called an "index".
+                                                // You can create and index by going to "Indices" in the menu to the left.
+                                                // Click to create a new index, and give it a name. Put the name you choose here.
+              "hits_per_page": 48,  // Number of games you want to show on each page
+              "sort_by": "asc(name)"  // Default sort order before the user has searched for anything.
+                                      // Can be one of: asc(rank), desc(rating), desc(numrated), desc(numowned)
+                                      // "asc" stands for ascending, meaning lowest number first, desc the opposite
           }
       }
       ```
@@ -62,7 +66,7 @@ Using this project, you can set up your own site for searching and filtering you
    </details>
 
 3. **Install the python libraries needed** by running:
-   ```pip install -r requirements.txt```
+   ```pip install -r scripts/requirements.txt```
 
    <details>
       <summary>Details</summary>
@@ -73,7 +77,7 @@ Using this project, you can set up your own site for searching and filtering you
    </details>
 
 4. **Download your games from boardgamegeek and send them to algolia**:
-   ```python download_and_index.py --apikey YOUR_ALGOLIA_ADMIN_API_KEY```
+   ```python scripts/download_and_index.py --apikey YOUR_ALGOLIA_ADMIN_API_KEY```
 
    (_Note that this API KEY is NOT the same as the one you put in config.json. Never share your admin api key publicly_)
 
@@ -99,14 +103,14 @@ GitHub Pages_. Select your master branch as Source, and click Save.
 
     This starts a webserver in the directory you're in.
 
-2. Open your web browser and go to `http://localhost:8000`. Voliá! Any time you make a change to your project you can
+2. Open your web browser and go to `http://localhost:8000`. Voliá! Any time you make a change to your project you can just reload the page to see your changes applied. When you're happy with the result, commit your changes.
 
 ## Updating your project to the latest version when mybgg is updated
 
 1. **Add a connection between your forked project**, and the mybgg project. We will use this "connection", or remote, to fetch the latest version. _You only need to do this the first time_.
 
    ```
-   git remote add upstream https://github.com/YOUR_GITHUB_USERNAME/mybgg.git
+   git remote add upstream https://github.com/EmilStenstrom/mybgg.git
    ```
 
 2. **Fetch the latest changes** from the mybgg project:
@@ -121,7 +125,14 @@ GitHub Pages_. Select your master branch as Source, and click Save.
    git merge upstream/master
    ```
 
-4. **Push the new updated version** to GitHub:
+4. **Update to the latest version of all external libraries** that mybgg uses internally. They can update between versions.
+
+   ```
+   pip install -r scripts/requirements.txt
+   ```
+
+
+5. **Push the new updated version** to GitHub:
 
    ```
    git push
@@ -130,5 +141,5 @@ GitHub Pages_. Select your master branch as Source, and click Save.
 ## Projects used under the hood
 
 * Meeple icon (CC4 Attribtion): https://icon-icons.com/icon/meeple/38522#256
-* Python library for BGG (BSD-3): https://github.com/lcosmin/boardgamegeek
 * Algolia search client (MIT): https://github.com/algolia/algoliasearch-client-python
+* Mobile testing with: <a href="https://www.browserstack.com"><img src="https://raw.githubusercontent.com/EmilStenstrom/mybgg/master/Browserstack-logo@2x.png" height="25" alt="Browserstack" style="vertical-align: top"></a>
